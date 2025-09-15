@@ -17,18 +17,17 @@ export default function Home() {
   const handleFileUpload = async (file: File) => {
     setUploadedFile(file);
     setIsUploading(true);
-  
+
     try {
       const formData = new FormData();
       formData.append("file", file);
-  
+
       const response = await axios.post("https://my-peer-link-backend-2.onrender.com/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
-        validateStatus: () => true, // ✅ let us handle 413 in catch
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -36,22 +35,26 @@ export default function Home() {
           }
         }
       });
-  
-      if (response.status === 413) {
-        toast.error("❌ File too large! Max 500 MB allowed.");
-        setUploadedFile(null);
-        return;
-      }
-  
+
       if (response.status !== 200) {
         throw new Error(`Unexpected status: ${response.status}`);
       }
-  
+
       setPort(response.data.port);
       toast.success("Upload Completed 🚀");
-    } catch (error: unknown) {
+
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 413) {
+          toast.error("❌ File too large! Max 500 MB allowed.");
+          setUploadedFile(null);
+        } else {
+          toast.error("❌ Failed to upload. Please try again.");
+        }
+      } else {
+        toast.error("❌ Unexpected error.");
+      }
       console.error("Error uploading file:", error);
-      toast.error("❌ Failed to upload. Please try again.");
     } finally {
       setIsUploading(false);
     }
