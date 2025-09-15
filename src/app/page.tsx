@@ -43,7 +43,7 @@ export default function Home() {
       setPort(response.data.port);
       toast.success("Upload Completed 🚀");
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 413) {
           toast.error("❌ File too large! Max 500 MB allowed.");
