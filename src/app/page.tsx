@@ -4,7 +4,7 @@ import { useState } from 'react';
 import FileUpload from '@/components/FileUpload';
 import FileDownload from '@/components/FileDownload';
 import InviteCode from '@/components/InviteCode';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
 
 export default function Home() {
@@ -14,49 +14,67 @@ export default function Home() {
   const [port, setPort] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'upload' | 'download'>('upload');
 
+  const [uploadController, setUploadController] = useState<AbortController | null>(null);
+
   const handleFileUpload = async (file: File) => {
     setUploadedFile(file);
     setIsUploading(true);
+    setPort(null); // Reset previous port on new upload
+
+    // Create a new AbortController for this upload
+    const controller = new AbortController();
+    setUploadController(controller);
 
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await axios.post("https://my-peer-link-backend-2.onrender.com/upload", formData, {
+      const response = await axios.post("http://localhost:8080/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
+        // The signal is what connects Axios to the AbortController
+        signal: controller.signal,
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             console.log(`Uploading: ${percent}%`);
           }
-        }
+        },
       });
 
-      if (response.status !== 200) {
-        throw new Error(`Unexpected status: ${response.status}`);
-      }
+      // No need for validateStatus, as non-2xx statuses will now throw an error
+      // which we will catch below.
 
       setPort(response.data.port);
       toast.success("Upload Completed 🚀");
 
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 413) {
+      if (axios.isCancel(error)) {
+        // This will be logged if we manually cancel the upload, which we aren't
+        // doing in this UI, but it's good practice to have.
+        console.log("Upload canceled:", error.message);
+      } else if (axios.isAxiosError(error)) {
+        // Check if the error is an AxiosError
+        const axiosError = error as AxiosError;
+        if (axiosError.response?.status === 413) {
           toast.error("❌ File too large! Max 500 MB allowed.");
-          setUploadedFile(null);
         } else {
+          // Handle other server errors
+          console.error("Error uploading file:", axiosError.message);
           toast.error("❌ Failed to upload. Please try again.");
         }
       } else {
-        toast.error("❌ Unexpected error.");
+        // Handle unexpected non-Axios errors
+        console.error("An unexpected error occurred:", error);
+        toast.error("❌ An unexpected error occurred.");
       }
-      console.error("Error uploading file:", error);
     } finally {
       setIsUploading(false);
+      setUploadedFile(null); // Clear the file state in all cases (success or fail)
+      setUploadController(null); // Clean up the controller
     }
   };
 
@@ -64,7 +82,7 @@ export default function Home() {
     setIsDownloading(true);
 
     try {
-      const response = await axios.get(`https://my-peer-link-backend-2.onrender.com/download/${port}`, {
+      const response = await axios.get(`http://localhost:8080/download/${port}`, {
         responseType: 'blob',
       });
 
