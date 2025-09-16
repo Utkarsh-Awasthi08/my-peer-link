@@ -13,8 +13,7 @@ export default function Home() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [port, setPort] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'upload' | 'download'>('upload');
-
-  const [uploadController, setUploadController] = useState<AbortController | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const handleFileUpload = async (file: File) => {
     const MAX_FILE_SIZE_MB = 500;
@@ -22,7 +21,7 @@ export default function Home() {
     if (file.size > MAX_FILE_SIZE_BYTES) {
       toast.error(`❌ File too large! Max ${MAX_FILE_SIZE_MB} MB allowed.`);
       // Clear the file input if possible (this depends on your FileUpload component)
-      setUploadedFile(null); 
+      setUploadedFile(null);
       return; // Stop the function here
     }
 
@@ -32,13 +31,13 @@ export default function Home() {
 
     // Create a new AbortController for this upload
     const controller = new AbortController();
-    setUploadController(controller);
-    console.log(uploadController);
+
+
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await axios.post("https://my-peer-link-backend-2.onrender.com/upload", formData, {
+      const response = await axios.post("http://localhost:8080/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -49,7 +48,7 @@ export default function Home() {
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            console.log(`Uploading: ${percent}%`);
+            setUploadProgress(percent);
           }
         },
       });
@@ -82,8 +81,9 @@ export default function Home() {
       }
     } finally {
       setIsUploading(false);
-      setUploadedFile(null); // Clear the file state in all cases (success or fail)
-      setUploadController(null); // Clean up the controller
+      setUploadedFile(null);
+
+      setUploadProgress(0); // reset bar
     }
   };
 
@@ -91,7 +91,7 @@ export default function Home() {
     setIsDownloading(true);
 
     try {
-      const response = await axios.get(`https://my-peer-link-backend-2.onrender.com/download/${port}`, {
+      const response = await axios.get(`http://localhost:8080/download/${port}`, {
         responseType: 'blob',
       });
 
@@ -174,8 +174,13 @@ export default function Home() {
 
             {isUploading && (
               <div className="mt-6 text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-                <p className="mt-2 text-gray-600">Uploading file...</p>
+                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                  <div
+                    className="bg-blue-500 h-4 transition-all duration-300 ease-in-out"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-gray-600">{uploadProgress}%</p>
               </div>
             )}
 
