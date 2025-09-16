@@ -15,6 +15,9 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'upload' | 'download'>('upload');
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
+  const browserAxios = axios.create({
+    adapter: "xhr" as any, // Force browser XHR adapter
+  });
   const handleFileUpload = async (file: File) => {
     const MAX_FILE_SIZE_MB = 500;
     const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -37,7 +40,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await axios.post("https://my-peer-link-backend-2.onrender.com/upload", formData, {
+      const response = await browserAxios.post("https://my-peer-link-backend-2.onrender.com/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -91,7 +94,7 @@ export default function Home() {
     setIsDownloading(true);
 
     try {
-      const response = await axios.get(`https://my-peer-link-backend-2.onrender.com/download/${port}`, {
+      const response = await browserAxios.get(`https://my-peer-link-backend-2.onrender.com/download/${port}`, {
         responseType: 'blob',
       });
 
