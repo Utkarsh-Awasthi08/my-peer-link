@@ -4,7 +4,7 @@ import { useState } from 'react';
 import FileUpload from '@/components/FileUpload';
 import FileDownload from '@/components/FileDownload';
 import InviteCode from '@/components/InviteCode';
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 
 export default function Home() {
@@ -16,7 +16,7 @@ export default function Home() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   const browserAxios = axios.create({
-    adapter: "xhr" as any, // Force browser XHR adapter
+    adapter: "xhr" as AxiosRequestConfig["adapter"], // Force browser XHR adapter
   });
   const handleFileUpload = async (file: File) => {
     const MAX_FILE_SIZE_MB = 500;
