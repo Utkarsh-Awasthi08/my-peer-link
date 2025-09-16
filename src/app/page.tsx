@@ -17,6 +17,15 @@ export default function Home() {
   const [uploadController, setUploadController] = useState<AbortController | null>(null);
 
   const handleFileUpload = async (file: File) => {
+    const MAX_FILE_SIZE_MB = 500;
+    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast.error(`❌ File too large! Max ${MAX_FILE_SIZE_MB} MB allowed.`);
+      // Clear the file input if possible (this depends on your FileUpload component)
+      setUploadedFile(null); 
+      return; // Stop the function here
+    }
+    
     setUploadedFile(file);
     setIsUploading(true);
     setPort(null); // Reset previous port on new upload
@@ -24,7 +33,7 @@ export default function Home() {
     // Create a new AbortController for this upload
     const controller = new AbortController();
     setUploadController(controller);
-
+    console.log(uploadController);
     try {
       const formData = new FormData();
       formData.append("file", file);
